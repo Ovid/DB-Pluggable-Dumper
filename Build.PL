@@ -11,6 +11,10 @@ my $builder = Module::Build->new(
     build_requires     => { 'Test::More' => 0, },
     add_to_cleanup     => ['DB-Pluggable-Dumper-*'],
     create_makefile_pl => 'traditional',
+    meta_merge        => {
+        resources =>
+          { repository => 'http://github.com/Ovid/DB-Pluggable-Dumper', },
+    },
 );
 
 $builder->create_build_script();
