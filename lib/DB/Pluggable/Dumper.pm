@@ -4,38 +4,32 @@ use strict;
 use warnings;
 use 5.008;
 use Data::Dumper ();
+use DB::Pluggable::Constants ':all';
 
 use parent 'DB::Pluggable::Plugin';
 
-my $eval = \&DB::eval;
-
 sub register {
-    my ( $self, $context ) = @_;
-    $self->make_command( xx => sub { }, );
+    my ($self, $context) = @_;
+    $context->register_hook(
+        $self,
+        'db.eval' => $self->can('eval'),
+    );
 }
 
-# XXX I couldn't make this work by pushing the eval override into
-# DB::Pluggable :(
-{
-    package    # hide from pause
-      DB;
-    *eval = sub {
-        if ( $DB::evalarg =~ s/\n\s*xx\s+([^\n]+)$/\n $1/ ) {
-            no warnings 'redefine';
-            local $DB::onetimeDump = 'dump';    # main::dumpvar shows the output
-            local *DB::dumpit = sub {
-                my ( $fh, $res ) = @_;
-                my $dd = Data::Dumper->new( [] );
-                $dd->Terse(1)->Indent(1)->Useqq(1)->Deparse(1)->Quotekeys(0)
-                  ->Sortkeys(1);
-                print $fh $dd->Values($res)->Dump;
-            };
-            $eval->();
-        }
-        else {
-            $eval->();
-        }
+sub eval {
+    my ($self, $context, $args) = @_;
+    return DECLINED unless $DB::evalarg =~ s/\n\s*xx\s+([^\n]+)$/\n $1/;
+    no warnings 'redefine';
+    local $DB::onetimeDump = 'dump';    # main::dumpvar shows the output
+    local *DB::dumpit = sub {
+        my ( $fh, $res ) = @_;
+        my $dd = Data::Dumper->new( [] );
+        $dd->Terse(1)->Indent(1)->Useqq(1)->Deparse(1)->Quotekeys(0)
+          ->Sortkeys(1);
+        print $fh $dd->Values($res)->Dump;
     };
+    $args->{eval}->();
+    HANDLED;
 }
 
 1;
