@@ -14,6 +14,8 @@ sub register {
     $self->make_command( xx => sub { }, );
 }
 
+# XXX I couldn't make this work by pushing the eval override into
+# DB::Pluggable :(
 {
     package    # hide from pause
       DB;
@@ -52,10 +54,98 @@ our $VERSION = '0.01';
 
 =head1 SYNOPSIS
 
-=head1 EXPORT
+In your C<$HOME/.perldb>:
 
-A list of functions that can be exported.  You can delete this section
-if you don't export anything, such as for a purely object-oriented module.
+    #!/usr/bin/env perl
+
+    use DB::Pluggable;
+    use YAML;
+
+    $DB::PluginHandler = DB::Pluggable->new( config => Load <<'END');
+    global:
+      log:
+        level: error
+
+    plugins:
+      - module: Dumper
+    END
+
+    $DB::PluginHandler->run;
+
+=head1 DESCRIPTION
+
+This module adds the C<xx> command to the debugger.  It's like the C<x>
+command, but outputs pretty L<Data::Dumper> format.  Here's the output of a
+data structure with 'x':
+
+    auto(-2)  DB<2> x $before
+    0  HASH(0x100e7e8f0)
+       'aref' => ARRAY(0x1009000d8)
+          0  1
+          1  2
+          2  4
+       'guess' => CODE(0x100829568)
+          -> &main::testit in run.pl:3-6
+       'uno' => HASH(0x100803108)
+          'this' => 'that'
+          'what?' => HASH(0x100e3d508)
+             'this' => 'them'
+
+Here's the same data structure with 'xx':
+
+    auto(-1)  DB<3> xx $after
+    {
+      aref => [
+        1,
+        2,
+        4
+      ],
+      guess => sub {
+          my $x = shift @_;
+          return $x + 1;
+      },
+      uno => {
+        this => "that",
+        "what?" => {
+          this => "them"
+        }
+      }
+    }
+
+Which would you rather debug?
+
+=head1 TODO
+
+=over 4
+
+=item * Add support for L<Data::Dump::Streamer>.
+
+=item * Push the eval hack back into L<DB::Pluggable>.
+
+=item * Allow control over dumper configuration.
+
+=back
+
+=head1 SEE ALSO
+
+=over 4
+
+=item * L<DB::Pluggable>
+
+Marcel Grünauer wrote this to add plugin support to the Perl debugger.  Has
+L<DB::Pluggable::BreakOnTestNumber> and L<DB::Pluggable::TypeAhead> included.
+
+=item * L<DB::Pluggable::StackTraceAsHTML>
+
+Adds a 'C<Th>' command to the debugger.  Opens up a strack trace in your
+browswer, complete with lexicals.
+
+=head1 NOTE
+
+This code is an awful hack because the perl debugger (C<perl5db.pl>) is an
+awful hack.  My apologies.
+
+=back
 
 =head1 AUTHOR
 
